@@ -1,0 +1,9 @@
+# Python Requirements for Merge Sort DSA Visualizer
+# Tkinter is bundled with Python — no pip install needed for the visualizer.
+# The packages below are optional extras.
+
+# For Matplotlib-based plotting (optional alternative visualizer)
+matplotlib>=3.7.0
+
+# For Pygame-based visualizer (optional alternative)
+# pygame>=2.4.0

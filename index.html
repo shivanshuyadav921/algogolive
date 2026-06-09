@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlgoGo Live — Universal DSA Learning Platform</title>
+    <meta name="description" content="Master any algorithm with live step-by-step visualizations, explanations, code, and quizzes. Enter any algorithm name, LeetCode URL, or code snippet to get started.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+    <!-- ═══════════════════ HEADER ═══════════════════ -->
+    <header id="app-header">
+        <div class="header-inner">
+            <a href="#" class="logo" id="logo-link">
+                <span class="logo-icon">⚡</span>
+                <span class="logo-text">AlgoGo<span class="accent">Live</span></span>
+            </a>
+            <nav id="main-nav" class="hidden">
+                <button class="nav-btn active" data-section="visualizer">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                    Visualizer
+                </button>
+                <button class="nav-btn" data-section="explain">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+                    Explain
+                </button>
+                <button class="nav-btn" data-section="code">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                    Code
+                </button>
+                <button class="nav-btn" data-section="quiz">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                    Quiz
+                </button>
+            </nav>
+            <button id="back-btn" class="back-button hidden">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                Back
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══════════════════ HERO / INPUT SECTION ═══════════════════ -->
+    <section id="hero-section">
+        <div class="hero-bg-effects">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+        </div>
+        <div class="hero-content">
+            <h1 class="hero-title">
+                Master Any Algorithm,<br>
+                <span class="gradient-text">Visually.</span>
+            </h1>
+            <p class="hero-subtitle">
+                Enter an algorithm name, paste a LeetCode URL, drop in code, or describe a problem in plain English — AlgoGo Live will generate live visualizations, explanations, and quizzes instantly.
+            </p>
+            <div class="input-container">
+                <div class="input-wrapper">
+                    <textarea id="algo-input" rows="3" placeholder="Try: &quot;Merge Sort&quot;, &quot;Binary Search&quot;, &quot;BFS on a graph&quot;, &quot;leetcode.com/problems/two-sum&quot;, or paste code..."></textarea>
+                    <button id="detect-btn" type="button">
+                        <span class="btn-text">Visualize</span>
+                        <span class="btn-icon">⚡</span>
+                    </button>
+                </div>
+                <div id="detection-feedback" class="hidden">
+                    <span id="detected-algo"></span>
+                    <span id="detected-confidence"></span>
+                </div>
+            </div>
+
+            <div class="quick-picks">
+                <span class="quick-label">Quick picks:</span>
+                <button class="quick-btn" data-algo="bubble_sort">Bubble Sort</button>
+                <button class="quick-btn" data-algo="binary_search">Binary Search</button>
+                <button class="quick-btn" data-algo="bfs">BFS</button>
+                <button class="quick-btn" data-algo="merge_sort">Merge Sort</button>
+                <button class="quick-btn" data-algo="dijkstra">Dijkstra</button>
+                <button class="quick-btn" data-algo="fibonacci_dp">Fibonacci DP</button>
+                <button class="quick-btn" data-algo="n_queens">N-Queens</button>
+                <button class="quick-btn" data-algo="kmp">KMP</button>
+            </div>
+        </div>
+
+        <!-- Category Browser -->
+        <div id="category-browser">
+            <h2 class="section-title">Browse by Category</h2>
+            <div id="category-grid"></div>
+        </div>
+
+        <!-- Algorithm List (shows when a category is clicked) -->
+        <div id="algo-list-panel" class="hidden">
+            <button id="close-algo-list" class="close-btn">&times;</button>
+            <h3 id="algo-list-title"></h3>
+            <div id="algo-list-grid"></div>
+        </div>
+    </section>
+
+    <!-- ═══════════════════ MAIN CONTENT ═══════════════════ -->
+    <main id="main-content" class="hidden">
+        <!-- Algorithm Info Bar -->
+        <div id="algo-info-bar">
+            <div class="info-left">
+                <h2 id="algo-name"></h2>
+                <span id="algo-category-badge" class="badge category-badge"></span>
+            </div>
+            <div class="info-right">
+                <div class="complexity-group">
+                    <span class="complexity-label">Time:</span>
+                    <span id="algo-time" class="badge time-badge"></span>
+                </div>
+                <div class="complexity-group">
+                    <span class="complexity-label">Space:</span>
+                    <span id="algo-space" class="badge space-badge"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════ VISUALIZER SECTION ═══════════ -->
+        <section id="visualizer-section" class="content-section">
+            <div class="viz-layout">
+                <div class="canvas-wrapper">
+                    <canvas id="viz-canvas"></canvas>
+                    <!-- Auxiliary data display (stack, queue, distance table, etc.) -->
+                    <div id="auxiliary-display" class="hidden"></div>
+                </div>
+                <div id="step-panel">
+                    <div class="step-header">
+                        <h3>Step <span id="step-current">0</span> <span class="step-divider">/</span> <span id="step-total">0</span></h3>
+                    </div>
+                    <div id="step-description" class="step-body">
+                        <p>Select an algorithm to begin.</p>
+                    </div>
+                    <div id="step-variables" class="step-vars"></div>
+                    <div id="step-legend" class="step-legend">
+                        <h4>Legend</h4>
+                        <div class="legend-items">
+                            <span class="legend-item"><span class="legend-dot" style="background:#6366f1"></span> Default</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:#06b6d4"></span> Active</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:#f59e0b"></span> Comparing</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:#ef4444"></span> Swapping</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:#10b981"></span> Sorted</span>
+                            <span class="legend-item"><span class="legend-dot" style="background:#ec4899"></span> Pivot/Key</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Playback Controls -->
+            <div id="playback-bar">
+                <div class="playback-left">
+                    <button id="btn-restart" class="ctrl-btn" title="Restart (Home)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    </button>
+                    <button id="btn-prev" class="ctrl-btn" title="Previous Step (←)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
+                    </button>
+                    <button id="btn-play" class="ctrl-btn play-btn" title="Play / Pause (Space)">
+                        <svg id="icon-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        <svg id="icon-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" class="hidden"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    </button>
+                    <button id="btn-next" class="ctrl-btn" title="Next Step (→)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zm-10 0l8.5 6L6 18z"/></svg>
+                    </button>
+                    <button id="btn-end" class="ctrl-btn" title="Go to End (End)">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6l8.5 6L6 18z"/></svg>
+                    </button>
+                </div>
+                <div class="playback-center">
+                    <div class="progress-track">
+                        <div id="progress-fill" class="progress-fill"></div>
+                    </div>
+                </div>
+                <div class="playback-right">
+                    <div class="speed-control">
+                        <label for="speed-slider">Speed</label>
+                        <input type="range" id="speed-slider" min="1" max="10" value="5" step="1">
+                        <span id="speed-label">1.0x</span>
+                    </div>
+                    <div class="step-counter">
+                        <span id="step-num">0</span> / <span id="step-count">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Custom Input -->
+            <div id="custom-input-bar">
+                <label for="custom-input">Custom Input:</label>
+                <input type="text" id="custom-input" placeholder="e.g. 64, 34, 25, 12, 22, 11, 90">
+                <button id="apply-input-btn" class="secondary-btn">Apply & Restart</button>
+            </div>
+        </section>
+
+        <!-- ═══════════ EXPLANATION SECTION ═══════════ -->
+        <section id="explain-section" class="content-section hidden">
+            <div id="explanation-content" class="explanation-container"></div>
+        </section>
+
+        <!-- ═══════════ CODE SECTION ═══════════ -->
+        <section id="code-section" class="content-section hidden">
+            <div class="code-header">
+                <div class="code-tabs">
+                    <button class="code-tab active" data-lang="python">
+                        <span class="lang-dot python-dot"></span>Python
+                    </button>
+                    <button class="code-tab" data-lang="cpp">
+                        <span class="lang-dot cpp-dot"></span>C++
+                    </button>
+                    <button class="code-tab" data-lang="java">
+                        <span class="lang-dot java-dot"></span>Java
+                    </button>
+                </div>
+                <button id="copy-code-btn" class="secondary-btn" title="Copy to clipboard">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    Copy
+                </button>
+            </div>
+            <div id="code-display" class="code-display">
+                <pre id="code-pre"><code id="code-content"></code></pre>
+            </div>
+        </section>
+
+        <!-- ═══════════ QUIZ SECTION ═══════════ -->
+        <section id="quiz-section" class="content-section hidden">
+            <div class="quiz-layout">
+                <div id="quiz-area">
+                    <h3 class="section-subtitle">Quiz</h3>
+                    <div id="quiz-cards"></div>
+                    <div id="quiz-score" class="hidden">
+                        <span id="quiz-score-text"></span>
+                    </div>
+                </div>
+                <div id="practice-area">
+                    <h3 class="section-subtitle">Practice Problems</h3>
+                    <div id="practice-list"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ═══════════════════ TOAST NOTIFICATIONS ═══════════════════ -->
+    <div id="toast-container"></div>
+
+    <!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+    <script type="module" src="js/core/app.js"></script>
+</body>
+</html>

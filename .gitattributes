@@ -1,0 +1,17 @@
+* text=auto
+
+# Keep executable and container files portable across Windows and Linux.
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Treat common binary assets as binary.
+*.gif binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.webp binary
+*.woff binary
+*.woff2 binary
