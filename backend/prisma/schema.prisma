@@ -22,6 +22,7 @@ model User {
   progress      UserProgress[]
   submissions   Submission[]
   streak        Streak?
+  learningSessions LearningSession[]
 }
 
 model Account {
@@ -136,4 +137,17 @@ model Note {
   problem    Problem  @relation(fields: [problemId], references: [id], onDelete: Cascade)
 
   @@unique([userId, problemId])
+}
+
+model LearningSession {
+  id             String   @id @default(uuid())
+  userId         String?
+  rawQuery       String   @db.Text
+  result         Json
+  currentStep    Int      @default(0)
+  revealedHints  Int      @default(0)
+  codeDrafts     Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  user           User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState } from 'react';
-import { BookOpen, HelpCircle, Code, ShieldAlert, Award } from 'lucide-react';
+import { BookOpen, HelpCircle, ShieldAlert, Award } from 'lucide-react';
+import { useVisualizerStore } from '@/store/visualizerStore';
 
 interface TutorPanelProps {
   data: {
@@ -15,11 +16,24 @@ interface TutorPanelProps {
     edgeCases: string[];
     commonMistakes: string[];
     interviewTips: string[];
+    recipe: {
+      title: string;
+      recognition: string;
+      invariant: string;
+      steps: Array<{ title: string; instruction: string }>;
+      validation: string[];
+    };
+    hints: Array<{
+      level: number;
+      title: string;
+      content: string;
+    }>;
   };
 }
 
 export const TutorPanel: React.FC<TutorPanelProps> = ({ data }) => {
-  const [activeTab, setActiveTab] = useState<'explanation' | 'edge-cases' | 'tips'>('explanation');
+  const [activeTab, setActiveTab] = useState<'explanation' | 'hints' | 'edge-cases' | 'tips'>('explanation');
+  const { revealedHints, setRevealedHints } = useVisualizerStore();
 
   return (
     <div className="w-full glass-panel rounded-2xl p-6 shadow-xl flex flex-col h-full">
@@ -32,6 +46,15 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({ data }) => {
           }`}
         >
           <BookOpen className="w-4 h-4" /> Explanation
+        </button>
+
+        <button
+          onClick={() => setActiveTab('hints')}
+          className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+            activeTab === 'hints' ? 'bg-primary text-white' : 'text-slate-400 hover:text-white'
+          }`}
+        >
+          <HelpCircle className="w-4 h-4" /> Hints
         </button>
 
         <button
@@ -57,6 +80,25 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({ data }) => {
       <div className="flex-1 overflow-y-auto pr-1">
         {activeTab === 'explanation' && (
           <div className="space-y-6">
+            <div className="border border-indigo-950/50 p-4 rounded-xl bg-indigo-950/10">
+              <h4 className="text-xs font-semibold text-primary uppercase tracking-wider mb-2">
+                Problem Recipe
+              </h4>
+              <p className="text-sm font-bold text-slate-200">{data.recipe.title}</p>
+              <p className="text-xs text-slate-400 leading-relaxed mt-2">{data.recipe.recognition}</p>
+              <p className="text-xs text-slate-300 leading-relaxed mt-3">
+                <span className="font-bold text-accent-cyan">Invariant:</span> {data.recipe.invariant}
+              </p>
+              <ol className="space-y-2 mt-4">
+                {data.recipe.steps.map((step, idx) => (
+                  <li key={`${step.title}-${idx}`} className="text-xs text-slate-300">
+                    <span className="font-bold text-slate-200">{idx + 1}. {step.title}:</span>{' '}
+                    {step.instruction}
+                  </li>
+                ))}
+              </ol>
+            </div>
+
             <div>
               <h4 className="text-xs font-semibold text-accent-cyan uppercase tracking-wider mb-2">Intuition</h4>
               <p className="text-sm text-slate-300 leading-relaxed">{data.intuition}</p>
@@ -114,6 +156,40 @@ export const TutorPanel: React.FC<TutorPanelProps> = ({ data }) => {
                 ))}
               </ul>
             </div>
+          </div>
+        )}
+
+        {activeTab === 'hints' && (
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-xs font-semibold text-accent-cyan uppercase tracking-wider">
+                Progressive Hints
+              </h4>
+              <p className="text-xs text-slate-500 mt-1">
+                Reveal only as much guidance as you need.
+              </p>
+            </div>
+            {data.hints.slice(0, revealedHints).map((hint) => (
+              <div key={hint.level} className="border border-card-border p-4 rounded-xl bg-slate-950/20">
+                <h5 className="text-xs font-bold text-slate-200">
+                  Hint {hint.level}: {hint.title}
+                </h5>
+                <p className="text-xs text-slate-350 leading-relaxed mt-2">{hint.content}</p>
+              </div>
+            ))}
+            {revealedHints === 0 && (
+              <p className="text-xs text-slate-500 border border-dashed border-card-border rounded-xl p-4">
+                No hints revealed yet.
+              </p>
+            )}
+            {revealedHints < data.hints.length && (
+              <button
+                onClick={() => setRevealedHints(revealedHints + 1)}
+                className="px-4 py-2 rounded-lg bg-secondary border border-indigo-500/25 text-xs font-bold text-white"
+              >
+                Reveal Hint {revealedHints + 1}
+              </button>
+            )}
           </div>
         )}
 

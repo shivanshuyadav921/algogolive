@@ -21,6 +21,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ type }) => {
   }
 
   const { state, highlights } = currentStep;
+  const initialState = steps[0]?.state || {};
 
   // Render sorting / searching arrays
   const renderArray = () => {
@@ -59,29 +60,38 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ type }) => {
 
   // Render Trees (interactive SVG layout representation)
   const renderTree = () => {
-    // Standard coordinates for drawing binary trees
-    const nodes = [
-      { id: 1, label: '10', x: 200, y: 50 },
-      { id: 2, label: '5', x: 100, y: 130 },
-      { id: 3, label: '15', x: 300, y: 130 },
-      { id: 4, label: '3', x: 50, y: 210 },
-      { id: 5, label: '7', x: 150, y: 210 },
-    ];
+    const rawNodes = state.nodes || initialState.nodes || [];
+    const nodes: Array<{ id: number; label: string; x: number; y: number }> = rawNodes.map((node: any) => {
+      const id = typeof node === 'object' ? node.id : node;
+      const depth = Math.floor(Math.log2(id + 1));
+      const firstAtDepth = 2 ** depth - 1;
+      const position = id - firstAtDepth;
+      const slots = 2 ** depth;
+      return {
+        id,
+        label: typeof node === 'object' ? node.label : String(node),
+        x: ((position + 1) * 400) / (slots + 1),
+        y: 45 + depth * 75,
+      };
+    });
+    const edges = state.edges || initialState.edges || [];
+    const treeDepth = nodes.reduce(
+      (maximum, node) => Math.max(maximum, Math.floor(Math.log2(node.id + 1))),
+      0,
+    );
 
-    const edges = [
-      { from: 1, to: 2 },
-      { from: 1, to: 3 },
-      { from: 2, to: 4 },
-      { from: 2, to: 5 },
-    ];
+    if (nodes.length === 0) {
+      return <p className="text-xs text-muted-foreground text-center">No concrete tree input was found.</p>;
+    }
 
     return (
       <div className="flex justify-center items-center h-80">
-        <svg className="w-full max-w-[400px] h-full" viewBox="0 0 400 260">
+        <svg className="w-full max-w-[400px] h-full" viewBox={`0 0 400 ${Math.max(260, 90 + treeDepth * 75)}`}>
           {/* Edges */}
-          {edges.map((edge, idx) => {
+          {edges.map((edge: { from: number; to: number }, idx: number) => {
             const fromNode = nodes.find(n => n.id === edge.from)!;
             const toNode = nodes.find(n => n.id === edge.to)!;
+            if (!fromNode || !toNode) return null;
             return (
               <line
                 key={idx}
@@ -97,7 +107,7 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ type }) => {
 
           {/* Nodes */}
           {nodes.map((node) => {
-            const isVisited = highlights?.visited?.includes(node.id);
+            const isVisited = highlights?.visited?.includes(node.id) || state.visited?.includes(node.id);
             const isActive = highlights?.active?.includes(node.id);
             
             let fill = 'fill-[#1e1b4b]';
@@ -135,28 +145,29 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ type }) => {
 
   // Render Graphs (nodes with direct links)
   const renderGraph = () => {
-    const nodes = [
-      { id: 'A', x: 80, y: 150 },
-      { id: 'B', x: 200, y: 70 },
-      { id: 'C', x: 200, y: 230 },
-      { id: 'D', x: 320, y: 150 },
-    ];
+    const rawNodes = state.nodes || initialState.nodes || [];
+    const nodes: Array<{ id: string | number; x: number; y: number }> = rawNodes.map((node: any, idx: number) => {
+      const angle = (idx / Math.max(rawNodes.length, 1)) * Math.PI * 2 - Math.PI / 2;
+      return {
+        id: typeof node === 'object' ? node.id : node,
+        x: 200 + Math.cos(angle) * 120,
+        y: 150 + Math.sin(angle) * 100,
+      };
+    });
+    const edges = state.edges || initialState.edges || [];
 
-    const edges = [
-      { from: 'A', to: 'B', weight: 4 },
-      { from: 'A', to: 'C', weight: 1 },
-      { from: 'C', to: 'B', weight: 2 },
-      { from: 'B', to: 'D', weight: 3 },
-      { from: 'C', to: 'D', weight: 5 },
-    ];
+    if (nodes.length === 0) {
+      return <p className="text-xs text-muted-foreground text-center">No concrete graph input was found.</p>;
+    }
 
     return (
       <div className="flex justify-center items-center h-80">
         <svg className="w-full max-w-[400px] h-full" viewBox="0 0 400 300">
           {/* Edge lines & weights */}
-          {edges.map((edge, idx) => {
+          {edges.map((edge: { from: string | number; to: string | number; weight?: number }, idx: number) => {
             const fromNode = nodes.find(n => n.id === edge.from)!;
             const toNode = nodes.find(n => n.id === edge.to)!;
+            if (!fromNode || !toNode) return null;
             return (
               <g key={idx}>
                 <line
@@ -174,16 +185,17 @@ export const VisualizerCanvas: React.FC<VisualizerCanvasProps> = ({ type }) => {
                   fontSize="10"
                   textAnchor="middle"
                 >
-                  {edge.weight}
+                  {edge.weight ?? ''}
                 </text>
               </g>
             );
           })}
 
           {/* Node objects */}
-          {nodes.map((node, idx) => {
+          {nodes.map((node) => {
             const isVisited = state.visited?.includes(node.id);
-            const isActive = highlights?.active?.includes(idx);
+            const activeNodes = highlights?.active as Array<string | number> | undefined;
+            const isActive = activeNodes?.includes(node.id);
 
             let fill = 'fill-[#1e1b4b]';
             let stroke = 'stroke-[#6366f1]';

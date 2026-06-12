@@ -6,6 +6,8 @@ import { SandboxModule } from './sandbox/sandbox.module';
 import { ProblemsModule } from './problems/problems.module';
 import { UsersModule } from './users/users.module';
 import { NotesModule } from './notes/notes.module';
+import { IngestionModule } from './ingestion/ingestion.module';
+import { LearningSessionsModule } from './learning-sessions/learning-sessions.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { NotesModule } from './notes/notes.module';
     ProblemsModule,
     UsersModule,
     NotesModule,
+    IngestionModule,
+    LearningSessionsModule,
   ],
 })
 export class AppModule {}

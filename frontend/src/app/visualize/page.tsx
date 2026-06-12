@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useVisualizerStore } from '@/store/visualizerStore';
 import { VisualizerCanvas } from '@/components/VisualizerCanvas';
 import { PlaybackControls } from '@/components/PlaybackControls';
@@ -13,18 +13,73 @@ import { Search, Sparkles, BookOpen, AlertCircle, FileText, Compass } from 'luci
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api';
 
 export default function VisualizePage() {
-  const { setSteps, setRawQuery } = useVisualizerStore();
+  const {
+    setSteps,
+    setRawQuery,
+    rawQuery,
+    parsedData,
+    setParsedData,
+    sessionId,
+    setSessionId,
+    currentStepIndex,
+    revealedHints,
+    codeDrafts,
+    jumpToStep,
+    setRevealedHints,
+    setCodeDraft,
+  } = useVisualizerStore();
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Track parsed visualizer details
-  const [parsedData, setParsedData] = useState<any>(null);
+  const [error, setError] = useState('');
   const [activeRightTab, setActiveRightTab] = useState<'tutor' | 'quiz' | 'notes'>('tutor');
+
+  useEffect(() => {
+    if (rawQuery && !query) setQuery(rawQuery);
+  }, [rawQuery]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    fetch(`${API_BASE_URL}/learning-sessions/${sessionId}`)
+      .then(async (response) => {
+        if (!response.ok) return null;
+        return response.json();
+      })
+      .then((session) => {
+        if (!session?.result?.visualizationData?.steps) return;
+        setParsedData(session.result);
+        setSteps(session.result.visualizationData.steps);
+        setRawQuery(session.rawQuery);
+        setQuery(session.rawQuery);
+        jumpToStep(session.currentStep ?? 0);
+        setRevealedHints(session.revealedHints ?? 0);
+        Object.entries(session.codeDrafts ?? {}).forEach(([language, code]) => {
+          if (typeof code === 'string') setCodeDraft(language, code);
+        });
+      })
+      .catch(() => undefined);
+  }, [sessionId]);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    const timer = setTimeout(() => {
+      fetch(`${API_BASE_URL}/learning-sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          currentStep: currentStepIndex,
+          revealedHints,
+          codeDrafts,
+        }),
+      }).catch(() => undefined);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [sessionId, currentStepIndex, revealedHints, codeDrafts]);
 
   const handleParse = async () => {
     if (!query.trim()) return;
     setLoading(true);
-    setParsedData(null);
+    setError('');
     try {
       const res = await fetch(`${API_BASE_URL}/visualizer/parse`, {
         method: 'POST',
@@ -32,7 +87,13 @@ export default function VisualizePage() {
         body: JSON.stringify({ query }),
       });
 
-      if (!res.ok) throw new Error('Failed to parse input');
+      if (!res.ok) {
+        const failure = await res.json().catch(() => null);
+        const message = Array.isArray(failure?.message)
+          ? failure.message.join(', ')
+          : failure?.message;
+        throw new Error(message || 'Failed to parse input');
+      }
 
       const data = await res.json();
       setParsedData(data);
@@ -40,8 +101,24 @@ export default function VisualizePage() {
       // Update global step traces
       setSteps(data.visualizationData.steps);
       setRawQuery(query);
+
+      try {
+        const sessionResponse = await fetch(`${API_BASE_URL}/learning-sessions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rawQuery: query, result: data }),
+        });
+        if (sessionResponse.ok) {
+          const session = await sessionResponse.json();
+          setSessionId(session.id);
+        } else {
+          setSessionId(null);
+        }
+      } catch {
+        setSessionId(null);
+      }
     } catch (e) {
-      alert('Error: Could not process algorithm name or code snippet.');
+      setError(e instanceof Error ? e.message : 'Could not process the input.');
     } finally {
       setLoading(false);
     }
@@ -53,13 +130,15 @@ export default function VisualizePage() {
       <div className="w-full glass-panel rounded-2xl p-5 flex flex-col md:flex-row items-stretch md:items-center gap-4 shadow-lg">
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
+          <textarea
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Paste a problem URL, code snippet, pseudocode, or natural-language algorithm prompt..."
-            className="w-full pl-12 pr-4 py-3 bg-slate-950/40 border border-card-border rounded-xl text-sm text-slate-200 outline-none focus:border-primary placeholder:text-slate-500 font-medium transition-all"
-            onKeyDown={(e) => e.key === 'Enter' && handleParse()}
+            rows={3}
+            className="w-full pl-12 pr-4 py-3 bg-slate-950/40 border border-card-border rounded-xl text-sm text-slate-200 outline-none focus:border-primary placeholder:text-slate-500 font-medium transition-all resize-y"
+            onKeyDown={(e) => {
+              if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') handleParse();
+            }}
           />
         </div>
         <button
@@ -70,6 +149,11 @@ export default function VisualizePage() {
           <Sparkles className="w-4 h-4" /> {loading ? 'Analyzing...' : 'Visualize Engine'}
         </button>
       </div>
+      {error && (
+        <div className="rounded-xl border border-red-950/60 bg-red-950/15 px-4 py-3 text-xs text-accent-rose" role="alert">
+          {error}
+        </div>
+      )}
 
       {/* 2. Visualizer Layout Grid */}
       {!parsedData ? (
@@ -110,15 +194,8 @@ export default function VisualizePage() {
             {/* Styled Code editor panel */}
             <div className="flex-1 min-h-[400px]">
               <CodePanel
-                starterCodes={[
-                  { language: 'python', code: 'def analyze(values):\n    state = []\n    for index, value in enumerate(values):\n        state.append((index, value))\n    return state\n\nprint(analyze([4, 1, 7, 3]))' },
-                  { language: 'cpp', code: '#include <iostream>\n#include <vector>\nusing namespace std;\n\nint main() {\n    vector<int> values = {4, 1, 7, 3};\n    for (int i = 0; i < values.size(); i++) {\n        cout << i << ":" << values[i] << " ";\n    }\n    return 0;\n}' },
-                  { language: 'java', code: 'class Main {\n    public static void main(String[] args) {\n        int[] values = {4, 1, 7, 3};\n        for (int index = 0; index < values.length; index++) {\n            System.out.print(index + ":" + values[index] + " ");\n        }\n    }\n}' },
-                  { language: 'javascript', code: 'function analyze(values) {\n  return values.map((value, index) => `${index}:${value}`);\n}\n\nconsole.log(analyze([4, 1, 7, 3]).join(" "));' }
-                ]}
-                testCases={[
-                  { input: '[4, 1, 7, 3]', output: '0:4 1:1 2:7 3:3' }
-                ]}
+                starterCodes={parsedData.artifact.starterCodes}
+                testCases={parsedData.artifact.testCases}
               />
             </div>
           </div>

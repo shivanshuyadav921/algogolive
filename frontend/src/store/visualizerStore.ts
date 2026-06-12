@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { createJSONStorage, persist } from 'zustand/middleware';
 
 export interface VisualizerStep {
   line?: number;
@@ -20,6 +21,10 @@ interface VisualizerState {
   currentStepIndex: number;
   steps: VisualizerStep[];
   rawQuery: string;
+  parsedData: any;
+  sessionId: string | null;
+  revealedHints: number;
+  codeDrafts: Record<string, string>;
   activeLanguage: 'python' | 'cpp' | 'java' | 'javascript';
   
   // Execution Outputs
@@ -28,6 +33,10 @@ interface VisualizerState {
 
   // Actions
   setRawQuery: (q: string) => void;
+  setParsedData: (data: any) => void;
+  setSessionId: (sessionId: string | null) => void;
+  setRevealedHints: (count: number) => void;
+  setCodeDraft: (language: string, code: string) => void;
   setSteps: (steps: VisualizerStep[]) => void;
   nextStep: () => void;
   prevStep: () => void;
@@ -39,17 +48,27 @@ interface VisualizerState {
   setExecutionState: (loading: boolean, results: any) => void;
 }
 
-export const useVisualizerStore = create<VisualizerState>((set, get) => ({
+export const useVisualizerStore = create<VisualizerState>()(persist((set, get) => ({
   isPlaying: false,
   speed: 1000,
   currentStepIndex: 0,
   steps: [],
   rawQuery: '',
+  parsedData: null,
+  sessionId: null,
+  revealedHints: 0,
+  codeDrafts: {},
   activeLanguage: 'python',
   codeRunnerResults: null,
   isExecuting: false,
 
   setRawQuery: (rawQuery) => set({ rawQuery }),
+  setParsedData: (parsedData) => set({ parsedData, revealedHints: 0, codeDrafts: {} }),
+  setSessionId: (sessionId) => set({ sessionId }),
+  setRevealedHints: (revealedHints) => set({ revealedHints }),
+  setCodeDraft: (language, code) => set((state) => ({
+    codeDrafts: { ...state.codeDrafts, [language]: code },
+  })),
   setSteps: (steps) => set({ steps, currentStepIndex: 0, isPlaying: false }),
   
   nextStep: () => set((state) => {
@@ -86,4 +105,17 @@ export const useVisualizerStore = create<VisualizerState>((set, get) => ({
   setLanguage: (activeLanguage) => set({ activeLanguage }),
   
   setExecutionState: (isExecuting, codeRunnerResults) => set({ isExecuting, codeRunnerResults }),
+}), {
+  name: 'algoverse-learning-session',
+  storage: createJSONStorage(() => localStorage),
+  partialize: (state) => ({
+    currentStepIndex: state.currentStepIndex,
+    steps: state.steps,
+    rawQuery: state.rawQuery,
+    parsedData: state.parsedData,
+    sessionId: state.sessionId,
+    revealedHints: state.revealedHints,
+    codeDrafts: state.codeDrafts,
+    activeLanguage: state.activeLanguage,
+  }),
 }));

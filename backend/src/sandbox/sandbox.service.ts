@@ -3,11 +3,16 @@ import { exec, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
+import {
+  ExecutionFeedback,
+  FeedbackService,
+} from '../feedback/feedback.service';
 
 export interface ExecuteRequest {
   code: string;
   language: string; // 'python' | 'cpp' | 'javascript' | 'java'
   testCases: Array<{ input: string; output: string }>;
+  pattern?: string;
 }
 
 interface TestResult {
@@ -22,13 +27,14 @@ export interface ExecuteResponse {
   success: boolean;
   results: TestResult[];
   compileError?: string;
+  feedback?: ExecutionFeedback;
 }
 
 @Injectable()
 export class SandboxService {
   private readonly tempDir = path.join(process.cwd(), 'temp_submissions');
 
-  constructor() {
+  constructor(private readonly feedbackService: FeedbackService) {
     // Ensure temp execution directory exists
     if (!fs.existsSync(this.tempDir)) {
       fs.mkdirSync(this.tempDir, { recursive: true });
@@ -44,22 +50,38 @@ export class SandboxService {
     fs.mkdirSync(runDir, { recursive: true });
 
     try {
+      let response: ExecuteResponse;
       if (language === 'python') {
-        return await this.runPython(runDir, code, testCases);
+        response = await this.runPython(runDir, code, testCases);
       } else if (language === 'javascript') {
-        return await this.runJavaScript(runDir, code, testCases);
+        response = await this.runJavaScript(runDir, code, testCases);
       } else if (language === 'cpp') {
-        return await this.runCpp(runDir, code, testCases);
+        response = await this.runCpp(runDir, code, testCases);
       } else if (language === 'java') {
-        return await this.runJava(runDir, code, testCases);
+        response = await this.runJava(runDir, code, testCases);
+      } else {
+        throw new Error(`Unsupported language: ${language}`);
       }
-      throw new Error(`Unsupported language: ${language}`);
+      return {
+        ...response,
+        feedback: this.feedbackService.evaluateExecution({
+          ...response,
+          pattern: req.pattern,
+        }),
+      };
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown sandbox execution error';
-      return {
+      const response = {
         success: false,
         results: [],
         compileError: message,
+      };
+      return {
+        ...response,
+        feedback: this.feedbackService.evaluateExecution({
+          ...response,
+          pattern: req.pattern,
+        }),
       };
     } finally {
       // Clean up workspace

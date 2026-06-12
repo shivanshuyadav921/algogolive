@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useVisualizerStore } from '@/store/visualizerStore';
 import { Play, CheckCircle2, XCircle, Terminal, HelpCircle } from 'lucide-react';
 
@@ -20,6 +20,9 @@ export const CodePanel: React.FC<CodePanelProps> = ({ starterCodes, testCases })
     isExecuting,
     codeRunnerResults,
     setExecutionState,
+    codeDrafts,
+    setCodeDraft,
+    parsedData,
   } = useVisualizerStore();
 
   // Load starter code matching selection
@@ -27,14 +30,50 @@ export const CodePanel: React.FC<CodePanelProps> = ({ starterCodes, testCases })
     return starterCodes.find((sc) => sc.language === lang)?.code || '';
   };
 
-  const [editorCode, setEditorCode] = useState(getStarterCode(activeLanguage));
+  const [editorCode, setEditorCode] = useState(
+    codeDrafts[activeLanguage] || getStarterCode(activeLanguage),
+  );
+
+  useEffect(() => {
+    const selectedCode = codeDrafts[activeLanguage] || getStarterCode(activeLanguage);
+    if (selectedCode) {
+      setEditorCode(selectedCode);
+      return;
+    }
+    const first = starterCodes.find((starter) =>
+      ['python', 'cpp', 'java', 'javascript'].includes(starter.language),
+    );
+    if (first) {
+      setLanguage(first.language as 'python' | 'cpp' | 'java' | 'javascript');
+      setEditorCode(first.code);
+    } else {
+      setEditorCode('');
+    }
+  }, [starterCodes]);
 
   const handleLanguageChange = (lang: 'python' | 'cpp' | 'java' | 'javascript') => {
     setLanguage(lang);
-    setEditorCode(getStarterCode(lang));
+    setEditorCode(codeDrafts[lang] || getStarterCode(lang));
   };
 
   const handleRunCode = async () => {
+    if (!editorCode.trim() || testCases.length === 0) {
+      setExecutionState(false, {
+        success: false,
+        compileError: 'This import does not include executable starter code and complete input/output test cases.',
+        feedback: {
+          status: 'blocked',
+          summary: 'No executable input/output test cases were available.',
+          diagnostics: [{
+            type: 'coverage',
+            message: 'The imported artifact did not provide complete expected outputs.',
+            suggestion: 'Add at least one concrete input and expected output before judging the solution.',
+          }],
+          nextAction: 'Provide a complete example or choose a catalog problem with test cases.',
+        },
+      });
+      return;
+    }
     setExecutionState(true, null);
     try {
       const res = await fetch(`${API_BASE_URL}/sandbox/run`, {
@@ -44,6 +83,7 @@ export const CodePanel: React.FC<CodePanelProps> = ({ starterCodes, testCases })
           code: editorCode,
           language: activeLanguage,
           testCases,
+          pattern: parsedData?.pattern,
         }),
       });
 
@@ -102,7 +142,10 @@ export const CodePanel: React.FC<CodePanelProps> = ({ starterCodes, testCases })
         <div className="flex-1 relative overflow-auto">
           <textarea
             value={editorCode}
-            onChange={(e) => setEditorCode(e.target.value)}
+            onChange={(e) => {
+              setEditorCode(e.target.value);
+              setCodeDraft(activeLanguage, e.target.value);
+            }}
             className="absolute inset-0 w-full h-full p-4 bg-transparent outline-none text-slate-300 resize-none font-mono text-xs leading-5 overflow-y-auto whitespace-pre z-10"
             spellCheck="false"
           />
@@ -140,6 +183,18 @@ export const CodePanel: React.FC<CodePanelProps> = ({ starterCodes, testCases })
 
           {codeRunnerResults && (
             <div className="space-y-2">
+              {codeRunnerResults.feedback && (
+                <div className="border border-indigo-950/50 bg-indigo-950/10 p-3 rounded">
+                  <p className="font-bold text-slate-200">{codeRunnerResults.feedback.summary}</p>
+                  {codeRunnerResults.feedback.diagnostics.map((diagnostic: any, idx: number) => (
+                    <div key={idx} className="mt-2 text-slate-400">
+                      <p>{diagnostic.message}</p>
+                      <p className="text-accent-cyan mt-1">{diagnostic.suggestion}</p>
+                    </div>
+                  ))}
+                  <p className="text-slate-300 mt-2">Next: {codeRunnerResults.feedback.nextAction}</p>
+                </div>
+              )}
               {codeRunnerResults.compileError && (
                 <div className="text-accent-rose whitespace-pre-wrap">
                   Compile Error:<br />
